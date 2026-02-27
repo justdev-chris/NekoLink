@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Windows.Forms;
 using System.Net;
 using System.Linq;
+using System.Diagnostics;
 
 class NekoLinkClient
 {
@@ -13,8 +14,15 @@ class NekoLinkClient
     static PictureBox pictureBox;
     static bool keyboardLocked = false;
     
+    [STAThread]
     static void Main(string[] args)
     {
+        // Check/add firewall rule
+        if (!IsFirewallRuleExists("NekoLink Client"))
+        {
+            AddFirewallRule();
+        }
+        
         string serverIp;
         
         if (args.Length == 0)
@@ -95,6 +103,46 @@ class NekoLinkClient
         pool.Start();
         
         Application.Run(form);
+    }
+    
+    static bool IsFirewallRuleExists(string ruleName)
+    {
+        try
+        {
+            Process process = new Process();
+            process.StartInfo.FileName = "netsh";
+            process.StartInfo.Arguments = "advfirewall firewall show rule name=\"" + ruleName + "\"";
+            process.StartInfo.UseShellExecute = false;
+            process.StartInfo.RedirectStandardOutput = true;
+            process.StartInfo.CreateNoWindow = true;
+            process.Start();
+            string output = process.StandardOutput.ReadToEnd();
+            process.WaitForExit();
+            return output.Contains(ruleName);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+    
+    static void AddFirewallRule()
+    {
+        try
+        {
+            ProcessStartInfo psi = new ProcessStartInfo();
+            psi.FileName = "netsh";
+            psi.Arguments = "advfirewall firewall add rule name=\"NekoLink Client\" dir=out action=allow program=\"" + Application.ExecutablePath + "\" enable=yes";
+            psi.Verb = "runas";
+            psi.UseShellExecute = true;
+            psi.CreateNoWindow = true;
+            
+            Process.Start(psi);
+        }
+        catch
+        {
+            // User declined admin or failed
+        }
     }
     
     static void ReceiveScreen()
