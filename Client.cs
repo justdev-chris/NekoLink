@@ -58,25 +58,39 @@ class NekoLinkClient
     }
     
     static void ReceiveScreen()
+{
+    int frameCount = 0;
+    DateTime lastTime = DateTime.Now;
+    
+    while (true)
     {
-        while (true)
+        byte[] lenBytes = new byte[4];
+        stream.Read(lenBytes, 0, 4);
+        int len = BitConverter.ToInt32(lenBytes, 0);
+        
+        byte[] imgData = new byte[len];
+        int total = 0;
+        while (total < len)
+            total += stream.Read(imgData, total, len - total);
+        
+        using (System.IO.MemoryStream ms = new System.IO.MemoryStream(imgData))
         {
-            byte[] lenBytes = new byte[4];
-            stream.Read(lenBytes, 0, 4);
-            int len = BitConverter.ToInt32(lenBytes, 0);
-            
-            byte[] imgData = new byte[len];
-            int total = 0;
-            while (total < len)
-                total += stream.Read(imgData, total, len - total);
-            
-            using (System.IO.MemoryStream ms = new System.IO.MemoryStream(imgData))
-            {
-                Image img = Image.FromStream(ms);
-                pictureBox.Invoke((MethodInvoker)delegate { pictureBox.Image = (Image)img.Clone(); });
-            }
+            Image img = Image.FromStream(ms);
+            pictureBox.Invoke((MethodInvoker)delegate { 
+                pictureBox.Image = (Image)img.Clone(); 
+                
+                // FPS counter
+                frameCount++;
+                if ((DateTime.Now - lastTime).TotalSeconds >= 1)
+                {
+                    form.Text = $"NekoLink - {frameCount} FPS";
+                    frameCount = 0;
+                    lastTime = DateTime.Now;
+                }
+            });
         }
     }
+}
     
     static void SendMouse(int x, int y)
     {
