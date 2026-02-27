@@ -49,23 +49,24 @@ class NekoLinkServer
                         Cursor.Position = new Point(int.Parse(parts[1]), int.Parse(parts[2]));
                         if (parts[3].Contains("Left"))
                         {
-                            mouse_event(0x02, 0, 0, 0, 0); // down
-                            mouse_event(0x04, 0, 0, 0, 0); // up
+                            mouse_event(0x02, 0, 0, 0, UIntPtr.Zero); // down
+                            mouse_event(0x04, 0, 0, 0, UIntPtr.Zero); // up
                         }
                         else if (parts[3].Contains("Right"))
                         {
-                            mouse_event(0x08, 0, 0, 0, 0); // down
-                            mouse_event(0x10, 0, 0, 0, 0); // up
+                            mouse_event(0x08, 0, 0, 0, UIntPtr.Zero); // down
+                            mouse_event(0x10, 0, 0, 0, UIntPtr.Zero); // up
                         }
                         break;
                         
                     case "KEY":
-                        keybd_event(byte.Parse(parts[1]), 0, parts[2] == "True" ? 0 : 2, UIntPtr.Zero);
+                        uint flags = parts[2] == "True" ? 0u : 2u;
+                        keybd_event(byte.Parse(parts[1]), 0, flags, UIntPtr.Zero);
                         break;
                 }
             }
             
-            System.Threading.Thread.Sleep(66); // 15 fps
+            System.Threading.Thread.Sleep(100); // 10 fps
         }
     }
     
