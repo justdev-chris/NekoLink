@@ -20,7 +20,7 @@ jobs:
     - name: Restore packages
       run: |
         nuget install LibVLCSharp -OutputDirectory packages
-        nuget install LibVLCSharp.WindowsForms -OutputDirectory packages
+        nuget install LibVLCSharp.WinForms -OutputDirectory packages
       shell: pwsh
     
     - name: Find csc
@@ -42,7 +42,7 @@ jobs:
     - name: Build Client
       run: |
         $libvlc = Resolve-Path "packages\LibVLCSharp.*\lib\netstandard2.0\LibVLCSharp.dll" | Select-Object -First 1
-        $winforms = Resolve-Path "packages\LibVLCSharp.WindowsForms.*\lib\net*\LibVLCSharp.WindowsForms.dll" | Select-Object -First 1
+        $winforms = Resolve-Path "packages\LibVLCSharp.WinForms.*\lib\net*\LibVLCSharp.WinForms.dll" | Select-Object -First 1
         & "$env:CSC_PATH\csc.exe" Client.cs /out:NekoLink-Client.exe /reference:$winforms /reference:$libvlc /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:Microsoft.VisualBasic.dll
       shell: pwsh
     
