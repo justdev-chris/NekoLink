@@ -19,12 +19,12 @@ jobs:
     
     - name: Restore Server packages
       run: |
-        nuget install LibVLCSharp -Version 3.8.5 -OutputDirectory packages
+        nuget install LibVLCSharp -Version 3.8.4 -OutputDirectory packages
       shell: pwsh
     
     - name: Restore Client packages
       run: |
-        nuget install LibVLCSharp.WindowsForms -Version 3.8.5 -OutputDirectory packages
+        nuget install LibVLCSharp.WindowsForms -Version 3.8.4 -OutputDirectory packages
       shell: pwsh
     
     - name: Find csc
@@ -39,20 +39,20 @@ jobs:
     
     - name: Build Server
       run: |
-        & "$env:CSC_PATH\csc.exe" Server.cs /out:NekoLink-Server.exe /target:winexe /reference:"packages\LibVLCSharp.3.8.5\lib\netstandard2.0\LibVLCSharp.dll" /reference:System.Windows.Forms.dll /reference:System.Drawing.dll
+        & "$env:CSC_PATH\csc.exe" Server.cs /out:NekoLink-Server.exe /target:winexe /reference:"packages\LibVLCSharp.3.8.4\lib\netstandard2.0\LibVLCSharp.dll" /reference:System.Windows.Forms.dll /reference:System.Drawing.dll
       shell: pwsh
     
     - name: Build Client
       run: |
-        & "$env:CSC_PATH\csc.exe" Client.cs /out:NekoLink-Client.exe /reference:"packages\LibVLCSharp.WindowsForms.3.8.5\lib\net481\LibVLCSharp.WindowsForms.dll" /reference:"packages\LibVLCSharp.3.8.5\lib\netstandard2.0\LibVLCSharp.dll" /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:Microsoft.VisualBasic.dll
+        & "$env:CSC_PATH\csc.exe" Client.cs /out:NekoLink-Client.exe /reference:"packages\LibVLCSharp.WindowsForms.3.8.4\lib\net481\LibVLCSharp.WindowsForms.dll" /reference:"packages\LibVLCSharp.3.8.4\lib\netstandard2.0\LibVLCSharp.dll" /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:Microsoft.VisualBasic.dll
       shell: pwsh
     
-    - name: Copy libvlc native binaries
+    - name: Create README
       run: |
-        # Create libvlc folder
-        mkdir libvlc -Force
-        # Download libvlc (users need this too)
-        echo "NOTE: Users need to install VideoLAN.LibVLC.Windows NuGet package or copy libvlc.dll manually" > LIBVLC.txt
+        echo "NekoLink - LibVLC Edition" > README.txt
+        echo "" >> README.txt
+        echo "Users need to install VideoLAN.LibVLC.Windows (3.0.20) or place libvlc.dll in same folder" >> README.txt
+        echo "Download from: https://www.nuget.org/packages/VideoLAN.LibVLC.Windows/" >> README.txt
       shell: pwsh
     
     - name: Upload artifacts
@@ -62,4 +62,4 @@ jobs:
         path: |
           NekoLink-Server.exe
           NekoLink-Client.exe
-          LIBVLC.txt
+          README.txt
