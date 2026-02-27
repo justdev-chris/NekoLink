@@ -2,6 +2,8 @@ using System;
 using System.Drawing;
 using System.Net.Sockets;
 using System.Windows.Forms;
+using System.Net;
+using System.Linq;
 
 class NekoLinkClient
 {
@@ -13,9 +15,47 @@ class NekoLinkClient
     
     static void Main(string[] args)
     {
-        client = new TcpClient();
-        client.Connect(args[0], 5900);
-        stream = client.GetStream();
+        string serverIp;
+        
+        if (args.Length == 0)
+        {
+            // Show IP selector
+            var ips = Dns.GetHostEntry(Dns.GetHostName()).AddressList
+                .Where(ip => ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                .ToList();
+            
+            if (ips.Count == 0)
+            {
+                MessageBox.Show("No network adapters found!");
+                return;
+            }
+            
+            string ipList = "Available IPs on network:\n\n";
+            foreach (var ip in ips)
+                ipList += ip.ToString() + "\n";
+            
+            ipList += "\nEnter the server IP:";
+            
+            string input = Microsoft.VisualBasic.Interaction.InputBox(ipList, "NekoLink - Connect", "192.168.1.", 500, 500);
+            if (string.IsNullOrEmpty(input)) return;
+            serverIp = input;
+        }
+        else
+        {
+            serverIp = args[0];
+        }
+        
+        try
+        {
+            client = new TcpClient();
+            client.Connect(serverIp, 5900);
+            stream = client.GetStream();
+        }
+        catch
+        {
+            MessageBox.Show($"Could not connect to {serverIp}:5900\n\nMake sure server is running and IP is correct.");
+            return;
+        }
         
         form = new Form();
         form.Text = "NekoLink - Remote Desktop";
@@ -24,13 +64,13 @@ class NekoLinkClient
         
         pictureBox = new PictureBox();
         pictureBox.Dock = DockStyle.Fill;
+        pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
         pictureBox.MouseMove += (s, e) => { if(keyboardLocked) SendMouse(e.X, e.Y); };
         pictureBox.MouseClick += (s, e) => { if(keyboardLocked) SendClick(e.X, e.Y, e.Button.ToString()); };
         pictureBox.Click += (s, e) => { keyboardLocked = true; form.Text = "NekoLink - Keyboard LOCKED (Press Right Ctrl to unlock)"; };
         
         form.Controls.Add(pictureBox);
         
-        // Global key handler for unlock
         form.KeyDown += (s, e) => {
             if (e.Control && e.KeyCode == Keys.RControlKey)
             {
@@ -58,39 +98,47 @@ class NekoLinkClient
     }
     
     static void ReceiveScreen()
-{
-    int frameCount = 0;
-    DateTime lastTime = DateTime.Now;
-    
-    while (true)
     {
-        byte[] lenBytes = new byte[4];
-        stream.Read(lenBytes, 0, 4);
-        int len = BitConverter.ToInt32(lenBytes, 0);
+        int frameCount = 0;
+        DateTime lastTime = DateTime.Now;
         
-        byte[] imgData = new byte[len];
-        int total = 0;
-        while (total < len)
-            total += stream.Read(imgData, total, len - total);
-        
-        using (System.IO.MemoryStream ms = new System.IO.MemoryStream(imgData))
+        while (true)
         {
-            Image img = Image.FromStream(ms);
-            pictureBox.Invoke((MethodInvoker)delegate { 
-                pictureBox.Image = (Image)img.Clone(); 
+            try
+            {
+                byte[] lenBytes = new byte[4];
+                stream.Read(lenBytes, 0, 4);
+                int len = BitConverter.ToInt32(lenBytes, 0);
                 
-                // FPS counter
-                frameCount++;
-                if ((DateTime.Now - lastTime).TotalSeconds >= 1)
+                byte[] imgData = new byte[len];
+                int total = 0;
+                while (total < len)
+                    total += stream.Read(imgData, total, len - total);
+                
+                using (System.IO.MemoryStream ms = new System.IO.MemoryStream(imgData))
                 {
-                    form.Text = $"NekoLink - {frameCount} FPS";
-                    frameCount = 0;
-                    lastTime = DateTime.Now;
+                    Image img = Image.FromStream(ms);
+                    pictureBox.Invoke((MethodInvoker)delegate { 
+                        if (pictureBox.Image != null)
+                            pictureBox.Image.Dispose();
+                        pictureBox.Image = (Image)img.Clone(); 
+                        
+                        frameCount++;
+                        if ((DateTime.Now - lastTime).TotalSeconds >= 1)
+                        {
+                            form.Text = $"NekoLink - {frameCount} FPS" + (keyboardLocked ? " (LOCKED)" : "");
+                            frameCount = 0;
+                            lastTime = DateTime.Now;
+                        }
+                    });
                 }
-            });
+            }
+            catch
+            {
+                break;
+            }
         }
     }
-}
     
     static void SendMouse(int x, int y)
     {
