@@ -1,6 +1,6 @@
 # NekoLink 🐱
 
-A lightweight remote desktop tool for Windows. Control another PC's screen, mouse, and keyboard with zero setup.
+A lightweight remote desktop tool for Windows. Control another PC's screen, mouse, and keyboard simply with zero setup.
 
 ## How it works
 
