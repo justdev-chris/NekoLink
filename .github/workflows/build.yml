@@ -22,7 +22,7 @@ jobs:
     
     - name: Build Client
       run: |
-        csc Client.cs /out:NekoLink-Client.exe
+        csc Client.cs /out:NekoLink-Client.exe /reference:Microsoft.VisualBasic.dll
     
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
