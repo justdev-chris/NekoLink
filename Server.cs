@@ -16,6 +16,7 @@ class NekoLinkServer
     static Process ffmpegProcess;
     static ListBox debugBox;
     static Form window;
+    static string localIP = "";
     
     [STAThread]
     static void Main()
@@ -23,6 +24,9 @@ class NekoLinkServer
         // Setup logging
         log = new StreamWriter("server_debug.txt", true);
         Log("Server starting...");
+        
+        // Get local IP
+        localIP = GetLocalIP();
         
         // Hide console
         var handle = GetConsoleWindow();
@@ -45,13 +49,14 @@ class NekoLinkServer
         menu.Items.Add("Exit", null, (s, e) => { Log("Shutting down..."); Application.Exit(); Environment.Exit(0); });
         trayIcon.ContextMenuStrip = menu;
         
-        trayIcon.ShowBalloonTip(1000, "NekoLink", "Server running", ToolTipIcon.Info);
+        trayIcon.ShowBalloonTip(1000, "NekoLink", $"Server running on {localIP}", ToolTipIcon.Info);
         
         // Show local IPs in debug
         Log("Your IPs:");
         foreach (var ip in Dns.GetHostEntry(Dns.GetHostName()).AddressList)
             if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
                 Log($"  {ip}");
+        Log($"Using IP: {localIP} for streaming");
         
         // Start video
         Thread videoThread = new Thread(StartVideo);
@@ -62,6 +67,20 @@ class NekoLinkServer
         controlThread.Start();
         
         Application.Run();
+    }
+    
+    static string GetLocalIP()
+    {
+        foreach (var ip in Dns.GetHostEntry(Dns.GetHostName()).AddressList)
+        {
+            if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork && 
+                !ip.ToString().StartsWith("192.168.56.") && // Skip virtual box
+                !ip.ToString().StartsWith("169.254."))      // Skip APIPA
+            {
+                return ip.ToString();
+            }
+        }
+        return "127.0.0.1";
     }
     
     static void CreateWindow()
@@ -118,11 +137,11 @@ class NekoLinkServer
                 return;
             }
             
-            Log("Starting video stream...");
+            Log($"Starting video stream on {localIP}:5900...");
             
             ffmpegProcess = new Process();
             ffmpegProcess.StartInfo.FileName = ffmpeg;
-            ffmpegProcess.StartInfo.Arguments = "-f gdigrab -framerate 30 -i desktop -vf format=yuv420p -f mpegts udp://0.0.0.0:5900?pkt_size=1316&listen=1";
+            ffmpegProcess.StartInfo.Arguments = $"-f gdigrab -framerate 30 -i desktop -vf format=yuv420p -f mpegts udp://{localIP}:5900?pkt_size=1316";
             ffmpegProcess.StartInfo.UseShellExecute = false;
             ffmpegProcess.StartInfo.CreateNoWindow = true;
             ffmpegProcess.StartInfo.RedirectStandardError = true;
@@ -231,8 +250,11 @@ class NekoLinkServer
         {
             string logMsg = $"{DateTime.Now:HH:mm:ss} - {message}";
             Console.WriteLine(logMsg);
-            if (log != null) log.WriteLine(logMsg);
-            if (log != null) log.Flush();
+            if (log != null)
+            {
+                log.WriteLine(logMsg);
+                log.Flush();
+            }
         }
         catch { }
     }
