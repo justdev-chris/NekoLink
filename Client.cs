@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using System.Diagnostics;
 using System.Threading;
 using System.IO;
+using Timer = System.Windows.Forms.Timer;
 
 class NekoLinkClient
 {
@@ -83,7 +84,7 @@ class NekoLinkClient
             ffmpegProcess.StartInfo.FileName = ffmpeg;
             ffmpegProcess.StartInfo.Arguments = $"-i udp://{serverIp}:5900?pkt_size=1316 -f sdl \"NekoLink - {serverIp}\"";
             ffmpegProcess.StartInfo.UseShellExecute = false;
-            ffmpegProcess.StartInfo.CreateNoWindow = false; // Show window for debugging
+            ffmpegProcess.StartInfo.CreateNoWindow = false;
             ffmpegProcess.StartInfo.RedirectStandardError = true;
             ffmpegProcess.StartInfo.RedirectStandardOutput = true;
             
@@ -152,8 +153,10 @@ class NekoLinkClient
         fullscreenBtn.Size = new Size(80, 30);
         fullscreenBtn.Click += (s, e) => {
             if (ffmpegProcess != null && !ffmpegProcess.HasExited)
+            {
                 SetForegroundWindow(ffmpegProcess.MainWindowHandle);
                 SendKeys.SendWait("%{ENTER}");
+            }
         };
         
         buttonPanel.Controls.Add(lockBtn);
@@ -178,13 +181,16 @@ class NekoLinkClient
                 log.Flush();
                 try
                 {
-                    string lastLines = File.ReadAllText("client_debug.txt");
-                    if (debugBox.Text.Length > 10000)
-                        debugBox.Text = "Debug output:\r\n" + lastLines.Substring(Math.Max(0, lastLines.Length - 5000));
-                    else
-                        debugBox.Text = "Debug output:\r\n" + lastLines;
-                    debugBox.SelectionStart = debugBox.Text.Length;
-                    debugBox.ScrollToCaret();
+                    if (File.Exists("client_debug.txt"))
+                    {
+                        string lastLines = File.ReadAllText("client_debug.txt");
+                        if (debugBox.Text.Length > 10000)
+                            debugBox.Text = "Debug output:\r\n" + lastLines.Substring(Math.Max(0, lastLines.Length - 5000));
+                        else
+                            debugBox.Text = "Debug output:\r\n" + lastLines;
+                        debugBox.SelectionStart = debugBox.Text.Length;
+                        debugBox.ScrollToCaret();
+                    }
                 }
                 catch { }
             }
@@ -221,7 +227,10 @@ class NekoLinkClient
         
         form.FormClosing += (s, e) => {
             Log("Closing...");
-            try { ffmpegProcess?.Kill(); } catch { }
+            try { 
+                if (ffmpegProcess != null && !ffmpegProcess.HasExited)
+                    ffmpegProcess.Kill(); 
+            } catch { }
         };
     }
     
@@ -267,8 +276,11 @@ class NekoLinkClient
         {
             string logMsg = $"{DateTime.Now:HH:mm:ss} - {message}";
             Console.WriteLine(logMsg);
-            log?.WriteLine(logMsg);
-            log?.Flush();
+            if (log != null)
+            {
+                log.WriteLine(logMsg);
+                log.Flush();
+            }
         }
         catch { }
     }
