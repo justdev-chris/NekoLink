@@ -14,29 +14,45 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Add MSBuild to PATH
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v2
+    
+    - name: Restore Server packages
+      run: |
+        nuget install LibVLCSharp -Version 3.8.5 -OutputDirectory packages
+      shell: pwsh
+    
+    - name: Restore Client packages
+      run: |
+        nuget install LibVLCSharp.WindowsForms -Version 3.8.5 -OutputDirectory packages
+      shell: pwsh
+    
+    - name: Find csc
       uses: microsoft/setup-msbuild@v2
     
-    - name: Find csc.exe
+    - name: Find csc.exe path
       run: |
         $vspath = vswhere -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
         $cscpath = Join-Path $vspath "MSBuild\Current\Bin\Roslyn"
-        
-        if (Test-Path $cscpath) {
-          echo "CSC_PATH=$cscpath" >> $env:GITHUB_ENV
-        } else {
-          echo "CSC_PATH=C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\Roslyn" >> $env:GITHUB_ENV
-        }
+        echo "CSC_PATH=$cscpath" >> $env:GITHUB_ENV
       shell: pwsh
     
     - name: Build Server
       run: |
-        & "$env:CSC_PATH\csc.exe" Server.cs /out:NekoLink-Server.exe /target:winexe /reference:System.Windows.Forms.dll /reference:System.Drawing.dll
+        & "$env:CSC_PATH\csc.exe" Server.cs /out:NekoLink-Server.exe /target:winexe /reference:"packages\LibVLCSharp.3.8.5\lib\netstandard2.0\LibVLCSharp.dll" /reference:System.Windows.Forms.dll /reference:System.Drawing.dll
       shell: pwsh
     
     - name: Build Client
       run: |
-        & "$env:CSC_PATH\csc.exe" Client.cs /out:NekoLink-Client.exe /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:Microsoft.VisualBasic.dll
+        & "$env:CSC_PATH\csc.exe" Client.cs /out:NekoLink-Client.exe /reference:"packages\LibVLCSharp.WindowsForms.3.8.5\lib\net481\LibVLCSharp.WindowsForms.dll" /reference:"packages\LibVLCSharp.3.8.5\lib\netstandard2.0\LibVLCSharp.dll" /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:Microsoft.VisualBasic.dll
+      shell: pwsh
+    
+    - name: Copy libvlc native binaries
+      run: |
+        # Create libvlc folder
+        mkdir libvlc -Force
+        # Download libvlc (users need this too)
+        echo "NOTE: Users need to install VideoLAN.LibVLC.Windows NuGet package or copy libvlc.dll manually" > LIBVLC.txt
       shell: pwsh
     
     - name: Upload artifacts
@@ -46,4 +62,4 @@ jobs:
         path: |
           NekoLink-Server.exe
           NekoLink-Client.exe
-          README.txt
+          LIBVLC.txt
