@@ -122,7 +122,7 @@ class NekoLinkServer
             
             ffmpegProcess = new Process();
             ffmpegProcess.StartInfo.FileName = ffmpeg;
-            ffmpegProcess.StartInfo.Arguments = "-f gdigrab -framerate 30 -i desktop -vf format=yuv420p -f mpegts udp://0.0.0.0:5900?pkt_size=1316";
+            ffmpegProcess.StartInfo.Arguments = "-f gdigrab -framerate 30 -i desktop -vf format=yuv420p -f mpegts udp://0.0.0.0:5900?pkt_size=1316&listen=1";
             ffmpegProcess.StartInfo.UseShellExecute = false;
             ffmpegProcess.StartInfo.CreateNoWindow = true;
             ffmpegProcess.StartInfo.RedirectStandardError = true;
