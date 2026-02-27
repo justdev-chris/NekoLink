@@ -14,19 +14,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Setup NuGet
-      uses: NuGet/setup-nuget@v2
-    
-    - name: Restore packages
-      run: |
-        nuget install LibVLCSharp -OutputDirectory packages
-        nuget install LibVLCSharp.WinForms -OutputDirectory packages
-      shell: pwsh
-    
-    - name: Find csc
+    - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v2
     
-    - name: Find csc.exe path
+    - name: Find csc.exe
       run: |
         $vspath = vswhere -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
         $cscpath = Join-Path $vspath "MSBuild\Current\Bin\Roslyn"
@@ -35,31 +26,12 @@ jobs:
     
     - name: Build Server
       run: |
-        $libvlc = Resolve-Path "packages\LibVLCSharp.*\lib\netstandard2.0\LibVLCSharp.dll" | Select-Object -First 1
-        & "$env:CSC_PATH\csc.exe" Server.cs /out:NekoLink-Server.exe /target:winexe /reference:$libvlc /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:"C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\netstandard.dll"
+        & "$env:CSC_PATH\csc.exe" Server.cs /out:NekoLink-Server.exe /target:winexe /reference:System.Windows.Forms.dll /reference:System.Drawing.dll
+      shell: pwsh
     
     - name: Build Client
       run: |
-        $libvlc = Resolve-Path "packages\LibVLCSharp.*\lib\netstandard2.0\LibVLCSharp.dll" | Select-Object -First 1
-        $winforms = Resolve-Path "packages\LibVLCSharp.WinForms.*\lib\net*\LibVLCSharp.WinForms.dll" | Select-Object -First 1
-        & "$env:CSC_PATH\csc.exe" Client.cs /out:NekoLink-Client.exe /reference:$winforms /reference:$libvlc /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:Microsoft.VisualBasic.dll
-      shell: pwsh
-    
-    - name: Create README
-      run: |
-        @"
-        NekoLink - LibVLC Edition
-        
-        USAGE:
-        1. Server: Run NekoLink-Server.exe (hides to tray)
-        2. Client: Run NekoLink-Client.exe, enter server IP
-        
-        REQUIREMENTS:
-        - Install VideoLAN.LibVLC.Windows (v3.0.20) from NuGet
-        - OR place libvlc.dll (from VLC installation) in same folder
-        
-        Download libvlc.dll from: https://www.nuget.org/packages/VideoLAN.LibVLC.Windows/
-        "@ > README.txt
+        & "$env:CSC_PATH\csc.exe" Client.cs /out:NekoLink-Client.exe /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:Microsoft.VisualBasic.dll
       shell: pwsh
     
     - name: Upload artifacts
@@ -69,4 +41,3 @@ jobs:
         path: |
           NekoLink-Server.exe
           NekoLink-Client.exe
-          README.txt
