@@ -60,7 +60,7 @@ class NekoLinkServer
                         break;
                         
                     case "KEY":
-                        keybd_event(byte.Parse(parts[1]), 0, parts[2] == "True" ? 0 : 2, 0);
+                        keybd_event(byte.Parse(parts[1]), 0, parts[2] == "True" ? 0 : 2, UIntPtr.Zero);
                         break;
                 }
             }
@@ -70,8 +70,8 @@ class NekoLinkServer
     }
     
     [System.Runtime.InteropServices.DllImport("user32.dll")]
-    static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, int dwExtraInfo);
+    static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, UIntPtr dwExtraInfo);
     
     [System.Runtime.InteropServices.DllImport("user32.dll")]
-    static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, int dwExtraInfo);
+    static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
 }
