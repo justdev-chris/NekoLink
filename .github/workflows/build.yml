@@ -5,6 +5,7 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -13,16 +14,25 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@v1
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v2
+    
+    - name: Find csc.exe
+      run: |
+        $vspath = vswhere -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
+        $cscpath = Join-Path $vspath "MSBuild\Current\Bin\Roslyn"
+        echo "CSC_PATH=$cscpath" >> $env:GITHUB_ENV
+      shell: pwsh
     
     - name: Build Server
       run: |
-        csc Server.cs /out:NekoLink-Server.exe
+        & "$env:CSC_PATH\csc.exe" Server.cs /out:NekoLink-Server.exe /target:winexe /reference:System.Windows.Forms.dll /reference:System.Drawing.dll
+      shell: pwsh
     
     - name: Build Client
       run: |
-        csc Client.cs /out:NekoLink-Client.exe /reference:Microsoft.VisualBasic.dll
+        & "$env:CSC_PATH\csc.exe" Client.cs /out:NekoLink-Client.exe /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:Microsoft.VisualBasic.dll
+      shell: pwsh
     
     - name: Upload artifacts
       uses: actions/upload-artifact@v4

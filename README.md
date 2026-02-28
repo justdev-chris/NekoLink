@@ -1,6 +1,6 @@
 # NekoLink 🐱
 
-A lightweight remote desktop tool for Windows. Control another PC's screen, mouse, and keyboard with zero setup.
+A lightweight remote desktop tool for Windows. Control another PC's screen, mouse, and keyboard simply with zero setup.
 
 ## How it works
 
@@ -34,7 +34,7 @@ Replace IP with the server's actual IP address
 
 ```
 csc Server.cs /out:NekoLink-Server.exe
-csc Client.cs /out:NekoLink-Client.exe /reference:Microsoft.VisualBasic.dll
+csc Client.cs /out:NekoLink-Client.exe /reference:Microsoft.VisualBasic.dll /reference:System.Windows.Forms
 ```
 
 ## Notes

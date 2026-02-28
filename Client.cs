@@ -1,160 +1,80 @@
 using System;
 using System.Drawing;
+using System.IO;
 using System.Net.Sockets;
 using System.Windows.Forms;
-using System.Net;
-using System.Linq;
+using System.Threading;
 
 class NekoLinkClient
 {
-    static TcpClient client;
-    static NetworkStream stream;
+    static PictureBox pb;
     static Form form;
-    static PictureBox pictureBox;
-    static bool keyboardLocked = false;
+    static bool locked = false;
     
+    [STAThread]
     static void Main(string[] args)
     {
-        string serverIp;
+        string ip = Microsoft.VisualBasic.Interaction.InputBox("Server IP:", "NekoLink", "192.168.1.");
         
-        if (args.Length == 0)
-        {
-            // Show IP selector
-            var ips = Dns.GetHostEntry(Dns.GetHostName()).AddressList
-                .Where(ip => ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
-                .ToList();
-            
-            if (ips.Count == 0)
-            {
-                MessageBox.Show("No network adapters found!");
-                return;
-            }
-            
-            string ipList = "Available IPs on network:\n\n";
-            foreach (var ip in ips)
-                ipList += ip.ToString() + "\n";
-            
-            ipList += "\nEnter the server IP:";
-            
-            string input = Microsoft.VisualBasic.Interaction.InputBox(ipList, "NekoLink - Connect", "192.168.1.", 500, 500);
-            if (string.IsNullOrEmpty(input)) return;
-            serverIp = input;
-        }
-        else
-        {
-            serverIp = args[0];
-        }
-        
-        try
-        {
-            client = new TcpClient();
-            client.Connect(serverIp, 5900);
-            stream = client.GetStream();
-        }
-        catch
-        {
-            MessageBox.Show($"Could not connect to {serverIp}:5900\n\nMake sure server is running and IP is correct.");
-            return;
-        }
+        TcpClient client = new TcpClient();
+        client.Connect(ip, 5900);
+        NetworkStream stream = client.GetStream();
         
         form = new Form();
-        form.Text = "NekoLink - Remote Desktop";
         form.WindowState = FormWindowState.Maximized;
         form.KeyPreview = true;
+        form.Text = "NekoLink";
         
-        pictureBox = new PictureBox();
-        pictureBox.Dock = DockStyle.Fill;
-        pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
-        pictureBox.MouseMove += (s, e) => { if(keyboardLocked) SendMouse(e.X, e.Y); };
-        pictureBox.MouseClick += (s, e) => { if(keyboardLocked) SendClick(e.X, e.Y, e.Button.ToString()); };
-        pictureBox.Click += (s, e) => { keyboardLocked = true; form.Text = "NekoLink - Keyboard LOCKED (Press Right Ctrl to unlock)"; };
+        pb = new PictureBox();
+        pb.Dock = DockStyle.Fill;
+        pb.SizeMode = PictureBoxSizeMode.Zoom;
+        form.Controls.Add(pb);
         
-        form.Controls.Add(pictureBox);
-        
+        // Lock controls
         form.KeyDown += (s, e) => {
             if (e.Control && e.KeyCode == Keys.RControlKey)
-            {
-                keyboardLocked = false;
-                form.Text = "NekoLink - Remote Desktop (Unlocked)";
-            }
-            
-            if (keyboardLocked)
-            {
-                SendKey((byte)e.KeyCode, true);
-            }
+                locked = false;
+            if (locked)
+                SendKey(stream, (byte)e.KeyCode, true);
         };
         
         form.KeyUp += (s, e) => {
-            if (keyboardLocked)
-            {
-                SendKey((byte)e.KeyCode, false);
-            }
+            if (locked)
+                SendKey(stream, (byte)e.KeyCode, false);
         };
         
-        System.Threading.Thread pool = new System.Threading.Thread(ReceiveScreen);
-        pool.Start();
+        pb.Click += (s, e) => locked = true;
         
-        Application.Run(form);
-    }
-    
-    static void ReceiveScreen()
-    {
-        int frameCount = 0;
-        DateTime lastTime = DateTime.Now;
-        
-        while (true)
-        {
-            try
+        new Thread(() => {
+            byte[] lenBytes = new byte[4];
+            while (true)
             {
-                byte[] lenBytes = new byte[4];
                 stream.Read(lenBytes, 0, 4);
                 int len = BitConverter.ToInt32(lenBytes, 0);
                 
                 byte[] imgData = new byte[len];
-                int total = 0;
-                while (total < len)
-                    total += stream.Read(imgData, total, len - total);
+                int read = 0;
+                while (read < len)
+                    read += stream.Read(imgData, read, len - read);
                 
-                using (System.IO.MemoryStream ms = new System.IO.MemoryStream(imgData))
+                using (MemoryStream ms = new MemoryStream(imgData))
                 {
                     Image img = Image.FromStream(ms);
-                    pictureBox.Invoke((MethodInvoker)delegate { 
-                        if (pictureBox.Image != null)
-                            pictureBox.Image.Dispose();
-                        pictureBox.Image = (Image)img.Clone(); 
-                        
-                        frameCount++;
-                        if ((DateTime.Now - lastTime).TotalSeconds >= 1)
-                        {
-                            form.Text = $"NekoLink - {frameCount} FPS" + (keyboardLocked ? " (LOCKED)" : "");
-                            frameCount = 0;
-                            lastTime = DateTime.Now;
-                        }
-                    });
+                    pb.Invoke((MethodInvoker)(() => {
+                        pb.Image?.Dispose();
+                        pb.Image = (Image)img.Clone();
+                    }));
                 }
             }
-            catch
-            {
-                break;
-            }
-        }
+        }).Start();
+        
+        Application.Run(form);
     }
     
-    static void SendMouse(int x, int y)
-    {
-        string cmd = $"MOUSE,{x},{y}";
-        stream.Write(System.Text.Encoding.ASCII.GetBytes(cmd), 0, cmd.Length);
-    }
-    
-    static void SendClick(int x, int y, string button)
-    {
-        string cmd = $"CLICK,{x},{y},{button}";
-        stream.Write(System.Text.Encoding.ASCII.GetBytes(cmd), 0, cmd.Length);
-    }
-    
-    static void SendKey(byte key, bool down)
+    static void SendKey(NetworkStream stream, byte key, bool down)
     {
         string cmd = $"KEY,{key},{down}";
-        stream.Write(System.Text.Encoding.ASCII.GetBytes(cmd), 0, cmd.Length);
+        byte[] data = System.Text.Encoding.ASCII.GetBytes(cmd);
+        stream.Write(data, 0, data.Length);
     }
 }
