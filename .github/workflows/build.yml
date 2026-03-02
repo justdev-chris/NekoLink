@@ -17,6 +17,13 @@ jobs:
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v2
     
+    - name: Download UPnP tool
+      run: |
+        # Download upnpc-static.exe from portmapper releases
+        curl -L -o upnpc.exe https://github.com/kaklakariada/portmapper/releases/download/v2.1.0/upnpc-static.exe
+        echo "UPnP tool downloaded"
+      shell: pwsh
+    
     - name: Find csc.exe
       run: |
         $vspath = vswhere -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
@@ -34,6 +41,24 @@ jobs:
         & "$env:CSC_PATH\csc.exe" Client.cs /out:NekoLink-Client.exe /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:Microsoft.VisualBasic.dll
       shell: pwsh
     
+    - name: Create README
+      run: |
+        @"
+        NekoLink - Remote Desktop
+        
+        USAGE:
+        - Server: Run NekoLink-Server.exe (runs in tray)
+        - Client: Run NekoLink-Client.exe, enter server IP
+        
+        INTERNET ACCESS:
+        - UPnP tool (upnpc.exe) included - run it to forward ports
+        - Or forward ports 5900 and 5901 manually on your router
+        - Give your public IP to remote clients
+        
+        Public IP: https://api.ipify.org
+        "@ > README.txt
+      shell: pwsh
+    
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
@@ -41,3 +66,5 @@ jobs:
         path: |
           NekoLink-Server.exe
           NekoLink-Client.exe
+          upnpc.exe
+          README.txt
